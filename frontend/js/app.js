@@ -1,6 +1,5 @@
-// App.js - Page content functions for Lamija E-Commerce Store
+// App.js 
 
-// Sample data - in a real app, this would come from an API
 const sampleProducts = [
     // Electronics
     {
@@ -954,7 +953,7 @@ function handleRegister(event) {
     }
     
     if (register(name, email, password)) {
-        // Registration successful - handled in register function
+        
     } else {
         showToast('Registration failed. Please try again.', 'error');
     }

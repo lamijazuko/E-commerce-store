@@ -1,4 +1,3 @@
-// Main JavaScript for Lamija E-Commerce Store SPA
 
 // Global variables
 let currentPage = 'home';
@@ -20,7 +19,6 @@ function showPage(pageName) {
     const mainContent = document.getElementById('main-content');
     mainContent.innerHTML = '<div class="loading-spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
     
-    // Load the requested page after a short delay for smooth transition
     setTimeout(() => {
         loadPageContent(pageName);
     }, 300);
@@ -37,7 +35,6 @@ function showPageWithCategory(pageName, categoryId) {
     // Load the requested page after a short delay for smooth transition
     setTimeout(() => {
         loadPageContent(pageName);
-        // Apply category filter after page loads
         setTimeout(() => {
             filterByCategory(categoryId);
         }, 200);
@@ -151,7 +148,6 @@ function calculateCartTotal() {
 
 // Show toast notifications
 function showToast(message, type = 'info') {
-    // Create toast element
     const toast = document.createElement('div');
     toast.className = `toast align-items-center text-white bg-${type} border-0`;
     toast.setAttribute('role', 'alert');
@@ -162,7 +158,6 @@ function showToast(message, type = 'info') {
         </div>
     `;
     
-    // Add to toast container or create one
     let toastContainer = document.getElementById('toast-container');
     if (!toastContainer) {
         toastContainer = document.createElement('div');
@@ -186,7 +181,6 @@ function showToast(message, type = 'info') {
 
 // User authentication functions
 function login(email, password) {
-    // Simulate login - in real app, this would make API call
     if (email && password) {
         user = {
             id: 1,
@@ -204,7 +198,6 @@ function login(email, password) {
 }
 
 function register(name, email, password) {
-    // Simulate registration - in real app, this would make API call
     if (name && email && password) {
         user = {
             id: 1,
@@ -229,18 +222,18 @@ function logout() {
     showPage('home');
 }
 
-// Handle search input (real-time search)
+// Handle search input 
 function handleSearchInput(event) {
     // Clear previous timeout
     if (window.searchTimeout) {
         clearTimeout(window.searchTimeout);
     }
     
-    // Set new timeout for search (debounced)
+    // Set new timeout for search 
     window.searchTimeout = setTimeout(() => {
         const query = event.target.value;
         searchProducts(query);
-    }, 300); // 300ms delay for better performance
+    }, 300); 
 }
 
 // Search functionality
@@ -367,7 +360,6 @@ function debounce(func, wait) {
     };
 }
 
-// Generate star rating HTML
 function generateStarRating(rating) {
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 !== 0;
