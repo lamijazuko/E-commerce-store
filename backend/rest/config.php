@@ -9,19 +9,19 @@ class Config
 {
     public static function DB_NAME()
     {
-        return 'dbname';
+        return 'ECommerce'; // Database name from database-schema.sql
     }
     public static function DB_PORT()
     {
-        return  3306;
+        return  3310;
     }
     public static function DB_USER()
     {
-        return 'username123'; // enter your db username
+        return 'root'; // XAMPP default username
     }
     public static function DB_PASSWORD()
     {
-        return 'dbpass123'; // enter your db password
+        return ''; // XAMPP default (empty password)
     }
     public static function DB_HOST()
     {

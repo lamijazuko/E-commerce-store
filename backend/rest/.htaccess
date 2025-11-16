@@ -1,0 +1,17 @@
+RewriteEngine On
+
+# Handle preflight OPTIONS requests
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Route all API requests to index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Allow access to swagger-ui.html and openapi.yaml
+<FilesMatch "\.(html|yaml|yml|css|js)$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>
+

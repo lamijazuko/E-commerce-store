@@ -1,0 +1,15 @@
+{
+    "name": "lamijazuko/e-commerce-store",
+    "description": "E-Commerce Store API with FlightPHP",
+    "type": "project",
+    "require": {
+        "php": ">=7.4",
+        "mikecao/flight": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "": "backend/"
+        }
+    }
+}
+

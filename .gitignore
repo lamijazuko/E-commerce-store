@@ -1,0 +1,30 @@
+# Dependencies
+vendor/
+composer.phar
+composer.lock
+
+# Documentation (except README.md)
+*.md
+!README.md
+
+# Test files
+test_apache.html
+*.bat
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
