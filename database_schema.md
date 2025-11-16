@@ -1,4 +1,4 @@
-# Database Schema - EverCart E-Commerce Storea
+# Database Schema - EverCart E-Commerce Store
 
 ## Entity-Relationship Diagram (ERD)
 
