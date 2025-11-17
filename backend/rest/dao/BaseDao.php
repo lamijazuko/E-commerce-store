@@ -50,14 +50,22 @@ class BaseDao
     public function update($entity, $id) {
         $setClause = '';
         foreach (array_keys($entity) as $col) {
-            $setClause .= "$col = :$col, ";
+            if ($col !== $this->id_column) {
+                $setClause .= "$col = :$col, ";
+            }
         }
         $setClause = rtrim($setClause, ', ');
         $query = "UPDATE {$this->table_name} SET $setClause WHERE {$this->id_column} = :id";
         $stmt = $this->connection->prepare($query);
-        $entity['id'] = $id;
-        $stmt->execute($entity);
+        $params = $entity;
+        $params['id'] = $id;
+        $stmt->execute($params);
+        $entity[$this->id_column] = $id;
         return $entity;
+    }
+    
+    public function execRaw($query) {
+        return $this->connection->exec($query);
     }
     public function delete($id) {
         $stmt = $this->connection->prepare("DELETE FROM {$this->table_name} WHERE {$this->id_column} = :id");
