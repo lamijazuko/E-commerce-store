@@ -49,7 +49,7 @@ class CategoryService {
         unset($categoryData['status']);
         unset($categoryData['parent_id']);
         unset($categoryData['image_url']);
-        unset($categoryData['description']);
+        // Note: description is now supported in database schema
         
         return $this->categoryDao->add($categoryData);
     }
@@ -85,7 +85,7 @@ class CategoryService {
         unset($categoryData['status']);
         unset($categoryData['parent_id']);
         unset($categoryData['image_url']);
-        unset($categoryData['description']);
+        // Note: description is now supported in database schema
         
         // Don't update ID
         unset($categoryData['category_id']);

@@ -34,10 +34,24 @@ Flight::route('GET /api/products/category/@categoryId', function($categoryId) {
     }
 });
 
-// POST /api/products - Create new product
+// POST /api/products - Create new product (Admin only)
 Flight::route('POST /api/products', function() {
     try {
-        $data = json_decode(Flight::request()->getBody(), true);
+        require_once __DIR__ . '/../middleware/AuthorizationMiddleware.php';
+        AuthorizationMiddleware::requireAdmin();
+        
+        require_once __DIR__ . '/../middleware/ValidationMiddleware.php';
+        $data = ValidationMiddleware::validateJson(
+            ['name', 'price'],
+            [
+                'price' => ['numeric' => true, 'positive' => true]
+            ]
+        );
+        
+        if ($data === null) {
+            return;
+        }
+        
         $service = new ProductService();
         $product = $service->createProduct($data);
         Flight::json(['data' => $product, 'message' => 'Product created successfully'], 201);
@@ -46,9 +60,12 @@ Flight::route('POST /api/products', function() {
     }
 });
 
-// PUT /api/products/:id - Update product
+// PUT /api/products/:id - Update product (Admin only)
 Flight::route('PUT /api/products/@id', function($id) {
     try {
+        require_once __DIR__ . '/../middleware/AuthorizationMiddleware.php';
+        AuthorizationMiddleware::requireAdmin();
+        
         $data = json_decode(Flight::request()->getBody(), true);
         $service = new ProductService();
         $product = $service->updateProduct($id, $data);
@@ -58,9 +75,12 @@ Flight::route('PUT /api/products/@id', function($id) {
     }
 });
 
-// DELETE /api/products/:id - Delete product
+// DELETE /api/products/:id - Delete product (Admin only)
 Flight::route('DELETE /api/products/@id', function($id) {
     try {
+        require_once __DIR__ . '/../middleware/AuthorizationMiddleware.php';
+        AuthorizationMiddleware::requireAdmin();
+        
         $service = new ProductService();
         $service->deleteProduct($id);
         Flight::json(['message' => 'Product deleted successfully'], 200);
@@ -69,9 +89,14 @@ Flight::route('DELETE /api/products/@id', function($id) {
     }
 });
 
-// PUT /api/products/:id/stock - Update product stock
+// PUT /api/products/:id/stock - Update product stock (Admin only)
 Flight::route('PUT /api/products/@id/stock', function($id) {
     try {
+        require_once __DIR__ . '/../middleware/AuthorizationMiddleware.php';
+        if (!AuthorizationMiddleware::requireAdmin()) {
+            return; // Stop execution if not authorized
+        }
+        
         $data = json_decode(Flight::request()->getBody(), true);
         $quantity = $data['quantity'] ?? 0;
         $service = new ProductService();

@@ -59,6 +59,17 @@ class UserService {
         // Hash password
         $userData['password'] = password_hash($userData['password'], PASSWORD_DEFAULT);
         
+        // Set default role if not provided (prevent role escalation)
+        if (!isset($userData['role']) || empty($userData['role'])) {
+            $userData['role'] = 'user'; // Default role
+        } else {
+            // Only allow 'user' role for self-registration
+            // Admin roles must be assigned by existing admins
+            if ($userData['role'] !== 'user') {
+                throw new Exception("Invalid role assignment");
+            }
+        }
+        
         // Create user
         $user = $this->userDao->add($userData);
         unset($user['password']);
@@ -131,8 +142,16 @@ class UserService {
             throw new Exception("Invalid credentials");
         }
         
-        unset($user['password']);
-        return $user;
+        // Prepare user data with role
+        $userData = [
+            'user_id' => $user['user_id'],
+            'name' => $user['name'],
+            'email' => $user['email'],
+            'address' => $user['address'] ?? '',
+            'role' => $user['role'] ?? 'user' // Default to 'user' if role not set
+        ];
+        
+        return $userData;
     }
 }
 
