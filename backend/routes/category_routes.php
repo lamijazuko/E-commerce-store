@@ -23,10 +23,19 @@ Flight::route('GET /api/categories/@id', function($id) {
     }
 });
 
-// POST /api/categories - Create new category
+// POST /api/categories - Create new category (Admin only)
 Flight::route('POST /api/categories', function() {
     try {
-        $data = json_decode(Flight::request()->getBody(), true);
+        require_once __DIR__ . '/../middleware/AuthorizationMiddleware.php';
+        AuthorizationMiddleware::requireAdmin();
+        
+        require_once __DIR__ . '/../middleware/ValidationMiddleware.php';
+        $data = ValidationMiddleware::validateJson(['name'], []);
+        
+        if ($data === null) {
+            return;
+        }
+        
         $service = new CategoryService();
         $category = $service->createCategory($data);
         Flight::json(['data' => $category, 'message' => 'Category created successfully'], 201);
@@ -35,9 +44,12 @@ Flight::route('POST /api/categories', function() {
     }
 });
 
-// PUT /api/categories/:id - Update category
+// PUT /api/categories/:id - Update category (Admin only)
 Flight::route('PUT /api/categories/@id', function($id) {
     try {
+        require_once __DIR__ . '/../middleware/AuthorizationMiddleware.php';
+        AuthorizationMiddleware::requireAdmin();
+        
         $data = json_decode(Flight::request()->getBody(), true);
         $service = new CategoryService();
         $category = $service->updateCategory($id, $data);
@@ -47,9 +59,12 @@ Flight::route('PUT /api/categories/@id', function($id) {
     }
 });
 
-// DELETE /api/categories/:id - Delete category
+// DELETE /api/categories/:id - Delete category (Admin only)
 Flight::route('DELETE /api/categories/@id', function($id) {
     try {
+        require_once __DIR__ . '/../middleware/AuthorizationMiddleware.php';
+        AuthorizationMiddleware::requireAdmin();
+        
         $service = new CategoryService();
         $service->deleteCategory($id);
         Flight::json(['message' => 'Category deleted successfully'], 200);

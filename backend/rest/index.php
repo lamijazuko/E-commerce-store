@@ -1,8 +1,14 @@
 <?php
+// Start session for authentication
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // Enable CORS
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Credentials: true");
 
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -47,6 +53,12 @@ require_once __DIR__ . '/dao/OrderDao.php';
 require_once __DIR__ . '/dao/CartDao.php';
 require_once __DIR__ . '/dao/ReviewDao.php';
 
+// Load Middleware
+require_once __DIR__ . '/../middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../middleware/AuthorizationMiddleware.php';
+require_once __DIR__ . '/../middleware/ValidationMiddleware.php';
+require_once __DIR__ . '/../middleware/LoggingMiddleware.php';
+
 // Load Services
 require_once __DIR__ . '/../services/UserService.php';
 require_once __DIR__ . '/../services/ProductService.php';
@@ -55,7 +67,13 @@ require_once __DIR__ . '/../services/OrderService.php';
 require_once __DIR__ . '/../services/CartService.php';
 require_once __DIR__ . '/../services/ReviewService.php';
 
-// Load Routes
+// Enable request logging (optional)
+Flight::before('start', function() {
+    LoggingMiddleware::logRequest();
+});
+
+// Load Routes - Auth routes first
+require_once __DIR__ . '/../routes/auth_routes.php';
 require_once __DIR__ . '/../routes/user_routes.php';
 require_once __DIR__ . '/../routes/product_routes.php';
 require_once __DIR__ . '/../routes/category_routes.php';

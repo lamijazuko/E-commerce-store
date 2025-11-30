@@ -1,5 +1,77 @@
 // App.js 
 
+// Global variables to store products and categories from API
+let products = [];
+let categories = [];
+
+// Load products and categories from API
+async function loadProductsAndCategories() {
+    try {
+        const [productsRes, categoriesRes] = await Promise.all([
+            window.API.Products.getAll(),
+            window.API.Categories.getAll()
+        ]);
+        
+        if (productsRes.success && productsRes.data.data) {
+            products = productsRes.data.data.map(p => ({
+                id: p.product_id,
+                name: p.name,
+                price: parseFloat(p.price),
+                image: p.image_url || 'https://via.placeholder.com/300x200?text=No+Image',
+                category_id: p.category_id,
+                description: p.description || '',
+                rating: 4.5 // Default rating, can fetch from reviews API if needed
+            }));
+        }
+        
+        if (categoriesRes.success && categoriesRes.data.data) {
+            // Map category icons based on name
+            const categoryIcons = {
+                'Electronics': 'fas fa-laptop',
+                'Clothing': 'fas fa-tshirt',
+                'Home & Kitchen': 'fas fa-home',
+                'Accessories': 'fas fa-gem',
+                'Sports': 'fas fa-dumbbell',
+                'Books': 'fas fa-book'
+            };
+            
+            categories = categoriesRes.data.data.map(cat => {
+                const productCount = products.filter(p => p.category_id == cat.category_id).length;
+                return {
+                    id: cat.category_id,
+                    name: cat.name,
+                    icon: categoryIcons[cat.name] || 'fas fa-box',
+                    count: productCount,
+                    description: cat.description || ''
+                };
+            });
+        }
+    } catch (error) {
+        console.error('Error loading products/categories:', error);
+        showToast('Error loading products. Please refresh the page.', 'danger');
+    }
+}
+
+// Helper function to get category name by ID
+function getCategoryName(categoryId) {
+    const category = categories.find(c => c.id == categoryId);
+    return category ? category.name : 'Unknown';
+}
+
+// Helper function to get rating for a product (from reviews)
+async function getProductRating(productId) {
+    try {
+        const ratingRes = await window.API.Reviews.getAverageRating(productId);
+        if (ratingRes.success && ratingRes.data.data) {
+            return parseFloat(ratingRes.data.data.avg_rating || 4.5);
+        }
+    } catch (error) {
+        console.error('Error loading rating:', error);
+    }
+    return 4.5; // Default rating
+}
+
+// Legacy hardcoded products (kept for reference, but will be replaced)
 const sampleProducts = [
     // Electronics
     {
@@ -219,8 +291,14 @@ const sampleOrders = [
 ];
 
 // Home Page
-function loadHomePage() {
+async function loadHomePage() {
     const mainContent = document.getElementById('main-content');
+    
+    // Load products and categories first
+    if (products.length === 0 || categories.length === 0) {
+        await loadProductsAndCategories();
+    }
+    
     mainContent.innerHTML = `
         <div class="page-content fade-in">
             <!-- Hero Section -->
@@ -254,8 +332,8 @@ function loadHomePage() {
                             <h2 class="text-center mb-5">Shop by Category</h2>
                         </div>
                     </div>
-                    <div class="row g-4">
-                        ${sampleCategories.slice(0, 4).map(category => `
+                    <div class="row g-4" id="categories-section">
+                        ${categories.slice(0, 4).map(category => `
                             <div class="col-md-3 col-sm-6">
                                 <a href="#" class="category-card" onclick="showPageWithCategory('products', ${category.id});">
                                     <i class="${category.icon} fa-3x mb-3"></i>
@@ -276,22 +354,22 @@ function loadHomePage() {
                             <h2 class="text-center mb-5">Featured Products</h2>
                         </div>
                     </div>
-                    <div class="row g-4">
-                        ${sampleProducts.slice(0, 4).map(product => `
+                    <div class="row g-4" id="featured-products-section">
+                        ${products.slice(0, 4).map(product => `
                             <div class="col-lg-3 col-md-6">
                                 <div class="card product-card h-100" onclick="showProductDetail(${product.id})">
-                                    <img src="${product.image}" class="card-img-top" alt="${product.name}">
+                                    <img src="${product.image}" class="card-img-top" alt="${product.name}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
                                     <div class="card-body d-flex flex-column">
                                         <h5 class="card-title">${product.name}</h5>
                                         <p class="card-text text-muted small">${product.description}</p>
                                         <div class="product-rating mb-2">
                                             ${generateStarRating(product.rating)}
-                                            <span class="ms-1">(${product.rating})</span>
+                                            <span class="ms-1">(${product.rating.toFixed(1)})</span>
                                         </div>
                                         <div class="mt-auto">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <span class="product-price">${formatPrice(product.price)}</span>
-                                                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); addToCart(${product.id}, '${product.name}', ${product.price}, '${product.image}')">
+                                                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); addToCart(${product.id}, '${product.name.replace(/'/g, "\\'")}', ${product.price}, '${product.image}')">
                                                     <i class="fas fa-cart-plus"></i>
                                                 </button>
                                             </div>
@@ -348,8 +426,14 @@ function loadHomePage() {
 }
 
 // Products Page
-function loadProductsPage() {
+async function loadProductsPage() {
     const mainContent = document.getElementById('main-content');
+    
+    // Load products and categories if not already loaded
+    if (products.length === 0 || categories.length === 0) {
+        await loadProductsAndCategories();
+    }
+    
     mainContent.innerHTML = `
         <div class="page-content fade-in">
             <div class="container py-5">
@@ -373,7 +457,7 @@ function loadProductsPage() {
                     <div class="col-md-6">
                         <select class="form-select" onchange="filterByCategory(this.value)">
                             <option value="">All Categories</option>
-                            ${sampleCategories.map(category => `
+                            ${categories.map(category => `
                                 <option value="${category.id}">${category.name}</option>
                             `).join('')}
                         </select>
@@ -382,29 +466,7 @@ function loadProductsPage() {
 
                 <!-- Products Grid -->
                 <div class="row g-4" id="products-grid">
-                    ${sampleProducts.map(product => `
-                        <div class="col-lg-4 col-md-6">
-                            <div class="card product-card h-100" onclick="showProductDetail(${product.id})">
-                                <img src="${product.image}" class="card-img-top" alt="${product.name}">
-                                <div class="card-body d-flex flex-column">
-                                    <h5 class="card-title">${product.name}</h5>
-                                    <p class="card-text text-muted small">${product.description}</p>
-                                    <div class="product-rating mb-2">
-                                        ${generateStarRating(product.rating)}
-                                        <span class="ms-1">(${product.rating})</span>
-                                    </div>
-                                    <div class="mt-auto">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="product-price">${formatPrice(product.price)}</span>
-                                            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); addToCart(${product.id}, '${product.name}', ${product.price}, '${product.image}')">
-                                                <i class="fas fa-cart-plus"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('')}
+                    <div class="col-12 text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>
                 </div>
             </div>
         </div>
@@ -414,15 +476,45 @@ function loadProductsPage() {
         const pageContent = mainContent.querySelector('.page-content');
         pageContent.classList.add('active');
         
-        // Reset filter to show all products when page loads
-        filterByCategory('');
+        // Render all products initially
+        renderProducts(products);
     }, 100);
 }
 
 // Product Detail Page
-function showProductDetail(productId) {
-    const product = sampleProducts.find(p => p.id === productId);
-    if (!product) return;
+async function showProductDetail(productId) {
+    let product = products.find(p => p.id === productId);
+    
+    // If product not in cache, fetch from API
+    if (!product) {
+        try {
+            const response = await window.API.Products.getById(productId);
+            if (response.success && response.data.data) {
+                const p = response.data.data;
+                product = {
+                    id: p.product_id,
+                    name: p.name,
+                    price: parseFloat(p.price),
+                    image: p.image_url || 'https://via.placeholder.com/300x200?text=No+Image',
+                    category_id: p.category_id,
+                    description: p.description || '',
+                    rating: 4.5
+                };
+            } else {
+                showToast('Product not found', 'danger');
+                showPage('products');
+                return;
+            }
+        } catch (error) {
+            showToast('Error loading product', 'danger');
+            showPage('products');
+            return;
+        }
+    }
+    
+    // Get rating from reviews API
+    const rating = await getProductRating(productId);
+    product.rating = rating;
     
     const mainContent = document.getElementById('main-content');
     mainContent.innerHTML = `
@@ -438,13 +530,13 @@ function showProductDetail(productId) {
 
                 <div class="row">
                     <div class="col-md-6">
-                        <img src="${product.image}" class="img-fluid rounded shadow" alt="${product.name}">
+                        <img src="${product.image}" class="img-fluid rounded shadow" alt="${product.name}" onerror="this.src='https://via.placeholder.com/500x500?text=No+Image'">
                     </div>
                     <div class="col-md-6">
                         <h1 class="mb-3">${product.name}</h1>
                         <div class="product-rating mb-3">
                             ${generateStarRating(product.rating)}
-                            <span class="ms-2">${product.rating} (124 reviews)</span>
+                            <span class="ms-2">${product.rating.toFixed(1)} (reviews)</span>
                         </div>
                         <h2 class="product-price mb-4">${formatPrice(product.price)}</h2>
                         <p class="lead mb-4">${product.description}</p>
@@ -459,7 +551,7 @@ function showProductDetail(productId) {
                         </div>
                         
                         <div class="d-grid gap-2 d-md-flex">
-                            <button class="btn btn-primary btn-lg" onclick="addToCart(${product.id}, '${product.name}', ${product.price}, '${product.image}')">
+                            <button class="btn btn-primary btn-lg" onclick="addToCart(${product.id}, '${product.name.replace(/'/g, "\\'")}', ${product.price}, '${product.image}')">
                                 <i class="fas fa-cart-plus me-2"></i>Add to Cart
                             </button>
                             <button class="btn btn-outline-primary btn-lg">
@@ -492,8 +584,14 @@ function showProductDetail(productId) {
 }
 
 // Categories Page
-function loadCategoriesPage() {
+async function loadCategoriesPage() {
     const mainContent = document.getElementById('main-content');
+    
+    // Load categories if not already loaded
+    if (categories.length === 0) {
+        await loadProductsAndCategories();
+    }
+    
     mainContent.innerHTML = `
         <div class="page-content fade-in">
             <div class="container py-5">
@@ -505,12 +603,13 @@ function loadCategoriesPage() {
                 </div>
 
                 <div class="row g-4">
-                    ${sampleCategories.map(category => `
+                    ${categories.map(category => `
                         <div class="col-lg-4 col-md-6">
                             <div class="card category-card h-100 text-center" onclick="showPageWithCategory('products', ${category.id});">
                                 <div class="card-body">
                                     <i class="${category.icon} fa-4x text-primary mb-3"></i>
                                     <h4 class="card-title">${category.name}</h4>
+                                    ${category.description ? `<p class="card-text text-muted small">${category.description}</p>` : ''}
                                     <p class="card-text">${category.count} products available</p>
                                     <a href="#" class="btn btn-primary" onclick="event.stopPropagation(); showPageWithCategory('products', ${category.id});">
                                         Browse Products
@@ -736,23 +835,42 @@ function loadRegisterPage() {
     }, 100);
 }
 
-// Profile Page
-function loadProfilePage() {
+// Profile Page (Updated to use real API)
+async function loadProfilePage() {
     if (!user) {
+        showToast('Please login to view your profile', 'danger');
         showPage('login');
         return;
     }
     
+    // Load fresh user data from API
+    try {
+        const response = await window.API.Auth.getCurrentUser();
+        if (response.success && response.data.data) {
+            user = { ...response.data.data, token: user.token };
+            setCurrentUser(user);
+        }
+    } catch (error) {
+        console.error('Error loading user data:', error);
+    }
+    
     const mainContent = document.getElementById('main-content');
+    const roleBadge = user.role === 'admin' ? '<span class="badge bg-danger ms-2">Admin</span>' : '<span class="badge bg-secondary ms-2">User</span>';
+    
     mainContent.innerHTML = `
         <div class="page-content fade-in">
             <div class="container py-5">
                 <div class="row">
                     <div class="col-md-4">
-                        <div class="profile-card text-center">
-                            <img src="${user.avatar}" alt="Profile" class="profile-avatar mb-3">
-                            <h4>${user.name}</h4>
-                            <p class="mb-0">${user.email}</p>
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <i class="fas fa-user-circle fa-5x text-primary"></i>
+                                </div>
+                                <h4>${user.name || 'User'}</h4>
+                                <p class="text-muted mb-2">${user.email}</p>
+                                ${roleBadge}
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-8">
@@ -761,28 +879,23 @@ function loadProfilePage() {
                                 <h5 class="mb-0">Profile Information</h5>
                             </div>
                             <div class="card-body">
-                                <form>
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">First Name</label>
-                                            <input type="text" class="form-control" value="John">
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">Last Name</label>
-                                            <input type="text" class="form-control" value="Doe">
-                                        </div>
+                                <form onsubmit="handleProfileUpdate(event)">
+                                    <div class="mb-3">
+                                        <label class="form-label">Full Name</label>
+                                        <input type="text" class="form-control" id="profile-name" value="${user.name || ''}" required>
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label">Email</label>
-                                        <input type="email" class="form-control" value="${user.email}">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Phone</label>
-                                        <input type="tel" class="form-control" value="+1 (555) 123-4567">
+                                        <input type="email" class="form-control" id="profile-email" value="${user.email || ''}" required>
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label">Address</label>
-                                        <textarea class="form-control" rows="3">123 Main Street, City, State 12345</textarea>
+                                        <textarea class="form-control" id="profile-address" rows="3">${user.address || ''}</textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Role</label>
+                                        <input type="text" class="form-control" value="${user.role || 'user'}" disabled>
+                                        <small class="text-muted">Role cannot be changed by user</small>
                                     </div>
                                     <button type="submit" class="btn btn-primary">Update Profile</button>
                                 </form>
@@ -800,9 +913,35 @@ function loadProfilePage() {
     }, 100);
 }
 
-// Orders Page
-function loadOrdersPage() {
+// Handle profile update
+async function handleProfileUpdate(event) {
+    event.preventDefault();
+    if (!user) return;
+    
+    const name = document.getElementById('profile-name').value;
+    const email = document.getElementById('profile-email').value;
+    const address = document.getElementById('profile-address').value;
+    
+    try {
+        const response = await window.API.Users.update(user.user_id, { name, email, address });
+        if (response.success) {
+            user = { ...user, ...response.data.data, token: user.token };
+            setCurrentUser(user);
+            updateUserStatus();
+            showToast('Profile updated successfully!', 'success');
+        } else {
+            showToast(response.data.message || 'Error updating profile', 'danger');
+        }
+    } catch (error) {
+        console.error('Profile update error:', error);
+        showToast('Error updating profile', 'danger');
+    }
+}
+
+// Orders Page (Updated to use real API)
+async function loadOrdersPage() {
     if (!user) {
+        showToast('Please login to view your orders', 'danger');
         showPage('login');
         return;
     }
@@ -818,49 +957,78 @@ function loadOrdersPage() {
                 </div>
 
                 <div class="row">
-                    ${sampleOrders.map(order => `
-                        <div class="col-12 mb-4">
-                            <div class="card order-card">
-                                <div class="card-body">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-3">
-                                            <h6 class="mb-1">Order #${order.id}</h6>
-                                            <p class="text-muted mb-0">${formatDate(order.date)}</p>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <h6 class="mb-1">Items</h6>
-                                            <ul class="list-unstyled mb-0">
-                                                ${order.items.map(item => `
-                                                    <li class="small">${item.name} x${item.quantity}</li>
-                                                `).join('')}
-                                            </ul>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <h6 class="mb-1">Total</h6>
-                                            <strong>${formatPrice(order.total)}</strong>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <span class="order-status status-${order.status}">${order.status}</span>
-                                        </div>
-                                        <div class="col-md-1">
-                                            <button class="btn btn-outline-primary btn-sm">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                        </div>
-                                    </div>
+                    <div class="col-12">
+                        <div id="orders-container">
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
                                 </div>
                             </div>
                         </div>
-                    `).join('')}
+                    </div>
                 </div>
             </div>
         </div>
     `;
     
+    // Load orders from API
+    try {
+        const response = await window.API.Orders.getUserOrders(user.user_id);
+        const container = document.getElementById('orders-container');
+        
+        if (response.success && response.data.data && response.data.data.length > 0) {
+            container.innerHTML = response.data.data.map(order => `
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-2">
+                                <h6 class="mb-1">Order #${order.order_id}</h6>
+                                <p class="text-muted mb-0 small">${new Date(order.order_date).toLocaleDateString()}</p>
+                            </div>
+                            <div class="col-md-4">
+                                <p class="mb-0"><strong>Status:</strong> <span class="badge bg-info">${order.status || 'Pending'}</span></p>
+                            </div>
+                            <div class="col-md-3">
+                                <p class="mb-0"><strong>Total:</strong> ${formatPrice(parseFloat(order.total_price))}</p>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                <button class="btn btn-outline-primary btn-sm" onclick="viewOrderDetails(${order.order_id})">
+                                    <i class="fas fa-eye me-1"></i>View Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = `
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-shopping-bag fa-3x mb-3"></i>
+                    <h4>No orders yet</h4>
+                    <p>You haven't placed any orders yet. Start shopping to see your orders here!</p>
+                    <a href="#" class="btn btn-primary" onclick="showPage('products')">Browse Products</a>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading orders:', error);
+        document.getElementById('orders-container').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>Error loading orders. Please try again later.
+            </div>
+        `;
+    }
+    
     setTimeout(() => {
         const pageContent = mainContent.querySelector('.page-content');
-        pageContent.classList.add('active');
+        if (pageContent) {
+            pageContent.classList.add('active');
+        }
     }, 100);
+}
+
+function viewOrderDetails(orderId) {
+    showToast(`Viewing order ${orderId} details - to be implemented`, 'info');
 }
 
 // About Page
@@ -927,20 +1095,30 @@ function loadAboutPage() {
     }, 100);
 }
 
-// Form handlers
-function handleLogin(event) {
+// Form handlers (Updated to use async functions)
+async function handleLogin(event) {
     event.preventDefault();
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
     
-    if (login(email, password)) {
-        // Login successful - handled in login function
-    } else {
-        showToast('Invalid email or password', 'error');
+    // Show loading state
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Logging in...';
+    
+    try {
+        await login(email, password);
+    } catch (error) {
+        console.error('Login error:', error);
+        showToast('Login failed. Please try again.', 'danger');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
     }
 }
 
-function handleRegister(event) {
+async function handleRegister(event) {
     event.preventDefault();
     const name = document.getElementById('registerName').value;
     const email = document.getElementById('registerEmail').value;
@@ -948,14 +1126,29 @@ function handleRegister(event) {
     const confirmPassword = document.getElementById('confirmPassword').value;
     
     if (password !== confirmPassword) {
-        showToast('Passwords do not match', 'error');
+        showToast('Passwords do not match', 'danger');
         return;
     }
     
-    if (register(name, email, password)) {
-        
-    } else {
-        showToast('Registration failed. Please try again.', 'error');
+    if (password.length < 6) {
+        showToast('Password must be at least 6 characters', 'danger');
+        return;
+    }
+    
+    // Show loading state
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Registering...';
+    
+    try {
+        await register(name, email, password);
+    } catch (error) {
+        console.error('Registration error:', error);
+        showToast('Registration failed. Please try again.', 'danger');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
     }
 }
 
